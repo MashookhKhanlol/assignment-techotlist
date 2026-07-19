@@ -1,0 +1,102 @@
+name: Deploy Skill Gap Analyzer
+
+# ─────────────────────────────────────────────────────────────
+# Triggers
+# ─────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+# ─────────────────────────────────────────────────────────────
+# Required Repo Secrets (Settings → Secrets → Actions):
+#
+#   ── SSH / Server ──
+#   HOST_IP            → VPS IP address          e.g. 203.0.113.10
+#   SSH_USER           → SSH login user           e.g. max / ubuntu
+#   SSH_PRIVATE_KEY    → full contents of your private key
+#
+#   ── App secrets (written to .env on the VPS) ──
+#   ANTHROPIC_API_KEY  → sk-ant-...
+#   CLAUDE_MODEL       → claude-haiku-3-5  (optional, falls back to default)
+# ─────────────────────────────────────────────────────────────
+
+jobs:
+  deploy:
+    name: Pull & Rebuild on VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+
+          script: |
+            set -e   # exit immediately if any command fails
+
+            DEPLOY_DIR=~/assignment/assignment-techotlist
+
+            # ── 1. Pull latest code ──────────────────────────────────────
+            echo "==> Syncing code from GitHub..."
+            cd "$DEPLOY_DIR"
+            git pull origin master
+            echo "    Code up to date."
+
+            # ── 2. Write .env from GitHub secrets ────────────────────────
+            # Overwrites on every deploy so secrets stay in sync without
+            # manual VPS access.
+            echo "==> Writing .env from GitHub secrets..."
+            cat > .env <<'ENVEOF'
+            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            CLAUDE_MODEL=${{ secrets.CLAUDE_MODEL || 'claude-haiku-3-5' }}
+            CORS_ORIGINS=https://skillgap.flowcrafted.me
+            ENVEOF
+            # Strip leading whitespace added by the heredoc indentation
+            sed -i 's/^[[:space:]]*//' .env
+            echo "    .env written."
+
+            # ── 3. Bring down running containers ─────────────────────────
+            echo "==> Stopping existing containers..."
+            docker compose down
+
+            # ── 4. Remove old images before a clean build ─────────────────
+            echo "==> Removing old images (if they exist)..."
+            docker rmi $(docker images -q 'assignment-techotlist-frontend') 2>/dev/null || true
+            docker rmi $(docker images -q 'assignment-techotlist-backend')  2>/dev/null || true
+            # Also clear dangling layers from previous builds
+            docker image prune -f
+
+            # ── 5. Build fresh images & start ────────────────────────────
+            echo "==> Building clean images (no cache) and starting containers..."
+            docker compose build --no-cache
+            docker compose up -d
+
+            # ── 6. Post-build cleanup ─────────────────────────────────────
+            echo "==> Running Docker cleanup..."
+            docker image prune -f
+            docker container prune -f
+            docker network prune -f
+            docker builder prune -f
+
+            # ── 7. Health check ───────────────────────────────────────────
+            echo "==> Waiting for backend health check..."
+            sleep 10
+            curl -sf http://localhost:3002 > /dev/null \
+              && echo "    Frontend is up on :3002" \
+              || echo "    WARNING: frontend did not respond on :3002 — check logs"
+
+            echo ""
+            echo "==> Done! Running containers:"
+            docker ps
+            echo ""
+            echo "==> Disk usage after cleanup:"
+            docker system df
