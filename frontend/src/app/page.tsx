@@ -41,8 +41,16 @@ export default function HomePage() {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ detail: "Unknown error" }));
-        throw new Error(body.detail ?? `Server error ${res.status}`);
+        // Try JSON first, fall back to raw text so we always see the real error
+        let detail: string;
+        try {
+          const body = await res.json();
+          detail = body.detail ?? `Server error ${res.status}`;
+        } catch {
+          const raw = await res.text().catch(() => "");
+          detail = `HTTP ${res.status} — ${raw.slice(0, 200) || "no response body"}`;
+        }
+        throw new Error(detail);
       }
 
       const data: AnalyzeResult = await res.json();
@@ -54,7 +62,13 @@ export default function HomePage() {
         document.getElementById("results-section")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Something went wrong.");
+      const msg =
+        err instanceof TypeError && err.message.includes("fetch")
+          ? "Could not reach the server — check that the backend is running."
+          : err instanceof Error
+          ? err.message
+          : "Something went wrong.";
+      setErrorMsg(msg);
       setAppState("error");
     }
   };
