@@ -57,7 +57,7 @@ jobs:
             echo "==> Writing .env from GitHub secrets..."
             cat > .env <<'ENVEOF'
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
-            CLAUDE_MODEL=${{ secrets.CLAUDE_MODEL || 'claude-haiku-3-5' }}
+            CLAUDE_MODEL=${{ secrets.CLAUDE_MODEL || 'claude-haiku-4-5-20251001' }}
             CORS_ORIGINS=https://skillgap.flowcrafted.me
             ENVEOF
             # Strip leading whitespace added by the heredoc indentation
