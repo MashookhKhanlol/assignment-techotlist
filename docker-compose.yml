@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - CORS_ORIGINS=http://localhost:3000,https://skillgap.flowcrafted.me
+      - CORS_ORIGINS=http://localhost:3002,https://skillgap.flowcrafted.me
     networks:
       - internal
     # Backend is NOT exposed externally — only reachable from frontend container
@@ -30,7 +30,7 @@ services:
     container_name: skillgap-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3002:3000"
     depends_on:
       backend:
         condition: service_healthy
