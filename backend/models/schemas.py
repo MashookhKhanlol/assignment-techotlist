@@ -3,7 +3,6 @@ Pydantic schemas for request/response models.
 """
 
 from pydantic import BaseModel
-from typing import Optional
 
 
 class AnalyzeResponse(BaseModel):
@@ -26,6 +25,26 @@ class AnalyzeResponse(BaseModel):
 
     match_percent: float
     """Percentage of JD skills covered by the resume (0–100)."""
+
+
+class VerdictRequest(BaseModel):
+    """Input to the /verdict endpoint — reuses already-extracted skills."""
+
+    matched_skills: list[str]
+    missing_skills: list[str]
+    bonus_skills: list[str]
+    jd_skills: list[str]
+    match_percent: float
+
+
+class VerdictResponse(BaseModel):
+    """AI-generated fit verdict with supporting reasons."""
+
+    verdict: str
+    """One of: 'Qualified', 'Almost There', 'Not Yet'"""
+
+    reasons: list[str]
+    """Exactly three concise strings explaining the verdict."""
 
 
 class ErrorResponse(BaseModel):

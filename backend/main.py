@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.analyze import router as analyze_router
+from routers.verdict import router as verdict_router
 
 # Load .env early so all modules that import at top-level get the values
 load_dotenv()
@@ -54,6 +55,7 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(analyze_router)
+app.include_router(verdict_router)
 
 
 @app.get("/health", tags=["health"])

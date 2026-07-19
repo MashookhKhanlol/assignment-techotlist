@@ -2,6 +2,7 @@
 
 import MatchRing from "./MatchRing";
 import SkillTag from "./SkillTag";
+import VerdictPanel from "./VerdictPanel";
 
 export interface AnalyzeResult {
   resume_skills: string[];
@@ -127,6 +128,9 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
         borderColor="var(--amber)"
         emptyText="No bonus skills beyond JD requirements."
       />
+
+      {/* ── AI Fit Verdict ── */}
+      <VerdictPanel analysisResult={result} />
     </div>
   );
 }
