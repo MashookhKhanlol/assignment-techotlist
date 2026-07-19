@@ -87,6 +87,12 @@ def extract_skills(text: str, context: str = "document") -> list[str]:
         logger.info("Extracted %d skills for context=%s", len(skills), context)
         return skills
 
+    except TypeError as e:
+        # Raised by the Anthropic client when ANTHROPIC_API_KEY is missing or empty
+        logger.error("Claude authentication error (missing API key?): %s", e)
+        raise RuntimeError(
+            "AI service is not configured — ANTHROPIC_API_KEY is missing or invalid."
+        ) from e
     except anthropic.APIConnectionError as e:
         logger.error("Claude API connection error: %s", e)
         raise RuntimeError("Could not connect to AI service. Please try again.") from e
